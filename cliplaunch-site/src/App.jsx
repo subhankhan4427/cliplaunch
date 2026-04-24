@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion, useInView } from 'framer-motion'
+import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion'
 
 const C = {
   bg: '#080808',
@@ -16,12 +16,19 @@ const C = {
   borderRed: 'rgba(232,0,28,0.25)',
 }
 
+const EASE_Premium = [0.22, 1, 0.36, 1]
+const DUR = {
+  fast: 0.18,
+  med: 0.35,
+  slow: 0.6,
+}
+
 const fadeUp = {
   hidden: { opacity: 0, y: 50 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.7, ease: EASE_Premium },
   },
 }
 
@@ -35,8 +42,27 @@ const scaleIn = {
   visible: {
     opacity: 1,
     scale: 1,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.6, ease: EASE_Premium },
   },
+}
+
+function hashSeed(seed) {
+  const str = String(seed ?? '0')
+  let h = 2166136261
+  for (let i = 0; i < str.length; i += 1) {
+    h ^= str.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+function mulberry32(a) {
+  return function rnd() {
+    let t = (a += 0x6d2b79f5)
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
 
 const navLinks = [
@@ -235,26 +261,170 @@ function useCountUp(end, active, duration = 1800) {
 }
 
 function Glow({ top, left, right, bottom, size = 500, opacity = 0.15, color = '232,0,28', blur = 100, style }) {
+  const reduceMotion = useReducedMotion()
+  const baseStyle = {
+    position: 'absolute',
+    top,
+    left,
+    right,
+    bottom,
+    width: size,
+    height: size,
+    background: `radial-gradient(circle, rgba(${color},${opacity}) 0%, transparent 70%)`,
+    filter: `blur(${blur}px)`,
+    borderRadius: '50%',
+    pointerEvents: 'none',
+    zIndex: 0,
+    ...style,
+  }
+
+  if (reduceMotion) {
+    return <div style={baseStyle} />
+  }
+
   return (
     <motion.div
       animate={{ opacity: [opacity * 0.75, opacity * 1.4, opacity * 0.75] }}
       transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+      style={baseStyle}
+    />
+  )
+}
+
+function BackgroundFX({
+  variant = 'dots',
+  density = 'md',
+  seed = '0',
+  zIndex = 0,
+  inset = 0,
+  opacity = 1,
+  blendMode,
+}) {
+  const reduceMotion = useReducedMotion()
+
+  const counts = useMemo(() => {
+    const map = {
+      low: { dots: 10, sparks: 6 },
+      md: { dots: 16, sparks: 9 },
+      high: { dots: 22, sparks: 12 },
+    }
+    return map[density] ?? map.md
+  }, [density])
+
+  const rnd = useMemo(() => mulberry32(hashSeed(`${variant}:${seed}`)), [seed, variant])
+
+  const dots = useMemo(() => {
+    const palette = ['rgba(232,0,28,0.9)', 'rgba(255,255,255,0.75)', 'rgba(255,120,0,0.85)']
+    return Array.from({ length: counts.dots }, () => {
+      const size = Math.round(2 + rnd() * 2)
+      return {
+        top: `${Math.round(rnd() * 90 + 5)}%`,
+        left: `${Math.round(rnd() * 94 + 3)}%`,
+        size,
+        color: palette[Math.floor(rnd() * palette.length)],
+        duration: 3.6 + rnd() * 4.2,
+        delay: rnd() * 4,
+        drift: 18 + rnd() * 30,
+      }
+    })
+  }, [counts.dots, rnd])
+
+  const sparks = useMemo(() => {
+    return Array.from({ length: counts.sparks }, () => {
+      const w = 2 + Math.round(rnd() * 2)
+      const h = 14 + Math.round(rnd() * 16)
+      const rot = -18 + rnd() * 36
+      return {
+        top: `${Math.round(rnd() * 92 + 4)}%`,
+        left: `${Math.round(rnd() * 94 + 3)}%`,
+        w,
+        h,
+        rot,
+        duration: 4.2 + rnd() * 5.8,
+        delay: rnd() * 3.5,
+        alpha: 0.22 + rnd() * 0.28,
+      }
+    })
+  }, [counts.sparks, rnd])
+
+  return (
+    <div
+      aria-hidden="true"
       style={{
         position: 'absolute',
-        top,
-        left,
-        right,
-        bottom,
-        width: size,
-        height: size,
-        background: `radial-gradient(circle, rgba(${color},${opacity}) 0%, transparent 70%)`,
-        filter: `blur(${blur}px)`,
-        borderRadius: '50%',
+        inset,
         pointerEvents: 'none',
-        zIndex: 0,
-        ...style,
+        zIndex,
+        opacity,
+        mixBlendMode: blendMode,
       }}
-    />
+    >
+      {variant === 'grid' ? (
+        <>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: 'radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px)',
+              backgroundSize: '34px 34px',
+              maskImage: 'radial-gradient(ellipse 80% 70% at 50% 40%, black 24%, transparent 78%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 80% 70% at 50% 40%, black 24%, transparent 78%)',
+              opacity: 0.85,
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'radial-gradient(ellipse 60% 55% at 50% 40%, rgba(232,0,28,0.09) 0%, transparent 70%)',
+            }}
+          />
+        </>
+      ) : null}
+
+      {variant === 'dots' && !reduceMotion
+        ? dots.map((d, idx) => (
+            <motion.div
+              // eslint-disable-next-line react/no-array-index-key
+              key={idx}
+              animate={{ y: [0, -d.drift, -d.drift * 2], opacity: [0, 1, 0], scale: [0, 1, 0.85] }}
+              transition={{ duration: d.duration, repeat: Infinity, delay: d.delay, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                top: d.top,
+                left: d.left,
+                width: d.size,
+                height: d.size,
+                borderRadius: '999px',
+                background: d.color,
+                filter: 'blur(0.2px)',
+              }}
+            />
+          ))
+        : null}
+
+      {variant === 'sparks' && !reduceMotion
+        ? sparks.map((s, idx) => (
+            <motion.div
+              // eslint-disable-next-line react/no-array-index-key
+              key={idx}
+              animate={{ y: [0, -14, -28], opacity: [0, s.alpha, 0] }}
+              transition={{ duration: s.duration, repeat: Infinity, delay: s.delay, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                top: s.top,
+                left: s.left,
+                width: s.w,
+                height: s.h,
+                transform: `rotate(${s.rot}deg)`,
+                borderRadius: '999px',
+                background: 'linear-gradient(to bottom, rgba(255,255,255,0.0), rgba(255,255,255,0.85), rgba(232,0,28,0.0))',
+                filter: 'blur(0.4px)',
+              }}
+            />
+          ))
+        : null}
+    </div>
   )
 }
 
@@ -327,7 +497,7 @@ function PrimaryButton({ children, href, onClick, style }) {
         onClick={onClick}
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.97 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: DUR.fast, ease: EASE_Premium }}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -356,7 +526,7 @@ function PrimaryButton({ children, href, onClick, style }) {
       onClick={onClick}
       whileHover={{ scale: 1.04 }}
       whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: DUR.fast, ease: EASE_Premium }}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -389,7 +559,7 @@ function CountStatCard({ item }) {
       ref={ref}
       variants={scaleIn}
       whileHover={{ y: -6 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      transition={{ duration: DUR.med, ease: EASE_Premium }}
       style={{
         background: 'linear-gradient(145deg, #131313, #0e0e0e)',
         borderTop: `2px solid ${C.red}`,
@@ -479,7 +649,7 @@ function ClientMarqueeRow({ items, direction = 'left', duration = 28 }) {
           <motion.div
             key={`${item}-${index}`}
             whileHover={{ y: -6 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
+            transition={{ duration: DUR.med, ease: EASE_Premium }}
             style={{
               width: '140px',
               height: '140px',
@@ -520,7 +690,7 @@ function ClipCard({ img, views, label, height = '260px' }) {
   return (
     <motion.div
       whileHover={{ y: -6 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      transition={{ duration: DUR.med, ease: EASE_Premium }}
       style={{
         position: 'relative',
         width: '160px',
@@ -548,29 +718,6 @@ function ClipCard({ img, views, label, height = '260px' }) {
           pointerEvents: 'none',
         }}
       />
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '12px',
-          left: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
-        <span style={{ color: C.white, fontSize: '12px' }}>▶</span>
-        <span
-          style={{
-            color: C.white,
-            fontSize: '18px',
-            fontWeight: 700,
-            fontFamily: "'Barlow Condensed', sans-serif",
-            letterSpacing: '0.02em',
-          }}
-        >
-          {views}
-        </span>
-      </div>
     </motion.div>
   )
 }
@@ -580,7 +727,7 @@ function StrategyCard({ card }) {
     <motion.div
       variants={scaleIn}
       whileHover={{ y: -6 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      transition={{ duration: DUR.med, ease: EASE_Premium }}
       style={{
         background: 'linear-gradient(145deg, #141414 0%, #0f0f0f 100%)',
         border: `1px solid ${C.border}`,
@@ -647,7 +794,7 @@ function ContentStyleCard({ item }) {
     <motion.div
       variants={scaleIn}
       whileHover={{ y: -8 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      transition={{ duration: DUR.med, ease: EASE_Premium }}
       style={{
         background: 'linear-gradient(160deg, #131313 0%, #0e0e0e 100%)',
         border: `1px solid ${C.border}`,
@@ -675,7 +822,7 @@ function ContentStyleCard({ item }) {
           <motion.div
             key={image}
             whileHover={{ scale: 1.03 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: DUR.slow, ease: EASE_Premium }}
             style={{
               flex: isPair ? 1 : 1,
               width: '100%',
@@ -814,7 +961,7 @@ function FloatingNav({
       <motion.div
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: navHidden ? -120 : 0, opacity: navHidden ? 0 : 1 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.7, ease: EASE_Premium }}
         style={{
           position: 'fixed',
           top: 0,
@@ -822,17 +969,21 @@ function FloatingNav({
           right: 0,
           zIndex: 100,
           padding: scrolled ? '12px 24px' : '20px 24px',
-          transition: 'padding 0.4s ease',
+          transition: 'padding 0.35s ease',
         }}
       >
         <div
           style={{
             maxWidth: '1100px',
             margin: '0 auto',
-            background: scrolled ? 'rgba(10,7,6,0.92)' : 'rgba(10,7,6,0.4)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: scrolled ? '1px solid rgba(232,0,28,0.3)' : '1px solid rgba(255,255,255,0.08)',
+            position: 'relative',
+            overflow: 'hidden',
+            background: scrolled
+              ? 'linear-gradient(180deg, rgba(14,10,10,0.92), rgba(10,7,6,0.88))'
+              : 'rgba(10,7,6,0.35)',
+            backdropFilter: scrolled ? 'blur(22px)' : 'blur(16px)',
+            WebkitBackdropFilter: scrolled ? 'blur(22px)' : 'blur(16px)',
+            border: scrolled ? '1px solid rgba(232,0,28,0.28)' : '1px solid rgba(255,255,255,0.08)',
             borderRadius: '999px',
             padding: '12px 24px',
             display: 'flex',
@@ -840,16 +991,40 @@ function FloatingNav({
             justifyContent: 'space-between',
             gap: '16px',
             boxShadow: scrolled
-              ? '0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(232,0,28,0.1)'
+              ? '0 10px 46px rgba(0,0,0,0.62), 0 0 0 1px rgba(232,0,28,0.08), inset 0 1px 0 rgba(255,255,255,0.06)'
               : 'none',
-            transition: 'all 0.4s ease',
+            transition: 'all 0.35s ease',
           }}
         >
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 1,
+              background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.22), transparent)',
+              opacity: scrolled ? 0.9 : 0.35,
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(ellipse 140% 70% at 50% -20%, rgba(255,255,255,0.06) 0%, transparent 55%)',
+              opacity: scrolled ? 1 : 0.6,
+              pointerEvents: 'none',
+            }}
+          />
           <motion.button
             type="button"
             onClick={() => goHome()}
             whileHover={{ color: '#ffffff' }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: DUR.fast, ease: EASE_Premium }}
             style={{
               border: 0,
               background: 'transparent',
@@ -878,7 +1053,7 @@ function FloatingNav({
                     type="button"
                     onClick={() => navigateToSection(link.href)}
                     whileHover={{ color: '#ffffff' }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: DUR.fast, ease: EASE_Premium }}
                     style={{
                       border: 0,
                       background: 'transparent',
@@ -900,7 +1075,7 @@ function FloatingNav({
                 onClick={() => navigateToSection('#strategy-call')}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: DUR.fast, ease: EASE_Premium }}
                 style={{
                   background: C.red,
                   borderRadius: '999px',
@@ -997,7 +1172,7 @@ function FloatingNav({
                       navigateToSection(link.href)
                     }}
                     whileHover={{ color: '#ffffff' }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: DUR.fast, ease: EASE_Premium }}
                     style={{
                       border: 0,
                       background: 'transparent',
@@ -1202,6 +1377,8 @@ function App() {
   const isMobile = width < 768
   const isTablet = width >= 768
   const isDesktop = width >= 1024
+  const fxDensity = isMobile ? 'low' : isDesktop ? 'high' : 'md'
+  const fxDensitySoft = isMobile ? 'low' : 'md'
   const [page, setPage] = useState('home')
   const [menuOpen, setMenuOpen] = useState(false)
   const [openFaq, setOpenFaq] = useState(0)
@@ -1210,18 +1387,6 @@ function App() {
   const [activeSection, setActiveSection] = useState('how-it-works')
   const [pendingSection, setPendingSection] = useState(null)
   const [clipsPaused, setClipsPaused] = useState(false)
-
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 18 }, () => ({
-        color: ['#ff4444', '#ff8800', '#ffffff'][Math.floor(Math.random() * 3)],
-        top: `${Math.random() * 55}%`,
-        left: `${Math.random() * 100}%`,
-        duration: Math.random() * 3 + 3,
-        delay: Math.random() * 4,
-      })),
-    [],
-  )
 
   const videoRef = useRef(null)
   const videoInView = useInView(videoRef, { once: true, margin: '-80px' })
@@ -1389,6 +1554,15 @@ function App() {
           0% { transform: translateX(0); }
           100% { transform: translateX(calc(-172px * 12)); }
         }
+
+        @media (prefers-reduced-motion: reduce) {
+          html { scroll-behavior: auto; }
+          *, *::before, *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+          }
+        }
       `}</style>
 
       <FloatingNav
@@ -1419,18 +1593,9 @@ function App() {
           <Glow bottom="-150px" left="50%" size={900} opacity={0.2} blur={120} style={{ transform: 'translateX(-50%)' }} />
           <Glow top="20%" left="-200px" size={600} opacity={0.08} />
           <Glow top="30%" right="-200px" size={500} opacity={0.08} />
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage: 'radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px)',
-              backgroundSize: '32px 32px',
-              maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 80%)',
-              WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 80%)',
-              pointerEvents: 'none',
-              zIndex: 0,
-            }}
-          />
+          <BackgroundFX variant="grid" seed="hero" zIndex={0} opacity={0.95} />
+          <BackgroundFX variant="dots" density={fxDensitySoft} seed="hero" zIndex={1} opacity={0.7} blendMode="screen" />
+          <BackgroundFX variant="sparks" density={isMobile ? 'low' : 'md'} seed="hero" zIndex={1} opacity={0.35} blendMode="screen" />
 
           <div
             style={{
@@ -1567,16 +1732,15 @@ function App() {
         >
           <Glow top="10%" left="-150px" size={500} opacity={0.18} />
           <Glow top="10%" right="-150px" size={500} opacity={0.18} />
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage: 'radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px)',
-              backgroundSize: '34px 34px',
-              maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 80%)',
-              WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 80%)',
-              pointerEvents: 'none',
-            }}
+          <BackgroundFX variant="grid" seed="how-it-works" zIndex={0} opacity={0.75} />
+          <BackgroundFX variant="dots" density={fxDensitySoft} seed="how-it-works" zIndex={1} opacity={0.45} blendMode="screen" />
+          <BackgroundFX
+            variant="sparks"
+            density={isMobile ? 'low' : 'md'}
+            seed="how-it-works"
+            zIndex={1}
+            opacity={0.25}
+            blendMode="screen"
           />
           <div
             style={{
@@ -1752,6 +1916,8 @@ function App() {
           }}
         >
           <Glow top="16%" left="-220px" size={560} opacity={0.11} />
+          <BackgroundFX variant="grid" seed="clients" zIndex={0} opacity={0.55} />
+          <BackgroundFX variant="dots" density={fxDensitySoft} seed="clients" zIndex={1} opacity={0.3} blendMode="screen" />
           <div
             style={{
               maxWidth: '1200px',
@@ -1923,6 +2089,9 @@ function App() {
           }}
         >
           <Glow top="0" right="-150px" size={700} opacity={0.1} />
+          <BackgroundFX variant="grid" seed="results" zIndex={0} opacity={0.6} />
+          <BackgroundFX variant="dots" density={fxDensitySoft} seed="results" zIndex={1} opacity={0.45} blendMode="screen" />
+          <BackgroundFX variant="sparks" density={isMobile ? 'low' : 'md'} seed="results" zIndex={1} opacity={0.28} blendMode="screen" />
           <div
             style={{
               maxWidth: '1200px',
@@ -2065,6 +2234,8 @@ function App() {
         </section>
 
         <SectionShell warm>
+          <BackgroundFX variant="grid" seed="formats" zIndex={0} opacity={0.65} />
+          <BackgroundFX variant="dots" density="low" seed="formats" zIndex={1} opacity={0.22} blendMode="screen" />
           <div
             style={{
               maxWidth: '1200px',
@@ -2125,6 +2296,8 @@ function App() {
         </SectionShell>
 
         <SectionShell>
+          <BackgroundFX variant="grid" seed="testimonials" zIndex={0} opacity={0.5} />
+          <BackgroundFX variant="dots" density={fxDensitySoft} seed="testimonials" zIndex={1} opacity={0.22} blendMode="screen" />
           <div
             style={{
               maxWidth: '1100px',
@@ -2168,7 +2341,7 @@ function App() {
                       key={item.name}
                       variants={scaleIn}
                       whileHover={{ y: -6 }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      transition={{ duration: DUR.med, ease: EASE_Premium }}
                       style={{
                         display: 'grid',
                         gridTemplateColumns: isMobile ? '1fr' : '280px 1fr',
@@ -2274,6 +2447,8 @@ function App() {
         </SectionShell>
 
         <SectionShell id="faq" warm style={{ background: 'linear-gradient(180deg, #080808 0%, #0a0504 50%, #080808 100%)' }}>
+          <BackgroundFX variant="grid" seed="faq" zIndex={0} opacity={0.55} />
+          <BackgroundFX variant="dots" density="low" seed="faq" zIndex={1} opacity={0.18} blendMode="screen" />
           <div
             style={{
               maxWidth: '1200px',
@@ -2412,30 +2587,9 @@ function App() {
               left: '15%',
             }}
           />
-
-          {particles.map((particle, index) => (
-            <motion.div
-              key={index}
-              animate={{ y: [0, -28, -56, -84], opacity: [0, 1, 0.65, 0], scale: [0, 1, 0.8, 0] }}
-              transition={{
-                duration: particle.duration,
-                repeat: Infinity,
-                delay: particle.delay,
-                ease: 'easeOut',
-              }}
-              style={{
-                position: 'absolute',
-                width: '3px',
-                height: '3px',
-                borderRadius: '50%',
-                zIndex: 1,
-                pointerEvents: 'none',
-                background: particle.color,
-                top: particle.top,
-                left: particle.left,
-              }}
-            />
-          ))}
+          <BackgroundFX variant="grid" seed="cta" zIndex={0} opacity={0.45} />
+          <BackgroundFX variant="dots" density={fxDensity} seed="cta" zIndex={1} opacity={0.75} blendMode="screen" />
+          <BackgroundFX variant="sparks" density={isMobile ? 'low' : 'high'} seed="cta" zIndex={1} opacity={0.35} blendMode="screen" />
 
           <div
             style={{
@@ -2547,10 +2701,11 @@ function App() {
               left: 0,
               right: 0,
               padding: '18px clamp(16px, 4vw, 48px)',
-              background: 'rgba(0,0,0,0.5)',
+              background: 'linear-gradient(180deg, rgba(8,8,8,0.15) 0%, rgba(8,8,8,0.78) 30%, rgba(8,8,8,0.92) 100%)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               borderTop: '1px solid rgba(255,255,255,0.06)',
+              boxShadow: '0 -18px 60px rgba(0,0,0,0.55)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -2559,64 +2714,77 @@ function App() {
               zIndex: 20,
             }}
           >
-            <button
-              type="button"
-              onClick={goHome}
-              style={{
-                border: 0,
-                background: 'transparent',
-                color: C.white,
-                fontFamily: "'Barlow Condensed', sans-serif",
-                fontSize: '24px',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-              }}
-            >
-               CLIPLAUNCH
-            </button>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '16px' }}>
-              {navLinks.map((link) => (
+            <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
                 <motion.button
-                  key={link.href}
                   type="button"
-                  onClick={() => navigateToSection(link.href)}
-                  whileHover={{ color: 'rgba(255,255,255,0.8)' }}
-                  transition={{ duration: 0.2 }}
+                  onClick={goHome}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: DUR.fast, ease: EASE_Premium }}
                   style={{
                     border: 0,
                     background: 'transparent',
-                    color: 'rgba(255,255,255,0.4)',
+                    color: C.white,
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    fontSize: '24px',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    letterSpacing: '0.06em',
+                    textShadow: '0 0 24px rgba(232,0,28,0.25)',
+                  }}
+                >
+                  CLIPLAUNCH
+                </motion.button>
+                <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Premium short-form execution
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '16px' }}>
+                {navLinks.map((link) => (
+                  <motion.button
+                    key={link.href}
+                    type="button"
+                    onClick={() => navigateToSection(link.href)}
+                    whileHover={{ color: 'rgba(255,255,255,0.9)' }}
+                    transition={{ duration: DUR.fast, ease: EASE_Premium }}
+                    style={{
+                      border: 0,
+                      background: 'transparent',
+                      color: 'rgba(255,255,255,0.5)',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {link.label}
+                  </motion.button>
+                ))}
+                <motion.button
+                  type="button"
+                  onClick={() => {
+                    setPage('tos')
+                    window.scrollTo(0, 0)
+                  }}
+                  whileHover={{ color: 'rgba(255,255,255,0.9)' }}
+                  transition={{ duration: DUR.fast, ease: EASE_Premium }}
+                  style={{
+                    border: 0,
+                    background: 'transparent',
+                    color: 'rgba(255,255,255,0.5)',
                     fontSize: '13px',
                     cursor: 'pointer',
                   }}
                 >
-                  {link.label}
+                  Terms of Service
                 </motion.button>
-              ))}
-              <motion.button
-                type="button"
-                onClick={() => {
-                  setPage('tos')
-                  window.scrollTo(0, 0)
-                }}
-                whileHover={{ color: 'rgba(255,255,255,0.8)' }}
-                transition={{ duration: 0.2 }}
-                style={{
-                  border: 0,
-                  background: 'transparent',
-                  color: 'rgba(255,255,255,0.4)',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
-              >
-                Terms of Service
-              </motion.button>
-            </div>
+              </div>
 
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
-              © 2025 ClipLaunch. All rights reserved.
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.02em' }}>
+                © {new Date().getFullYear()} ClipLaunch. All rights reserved.
+              </div>
             </div>
           </div>
         </motion.section>
