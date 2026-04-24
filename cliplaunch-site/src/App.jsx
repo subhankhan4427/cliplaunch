@@ -693,8 +693,8 @@ function ContentStyleCard({ item }) {
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center top',
+                objectFit: 'contain',
+                objectPosition: 'center',
                 display: 'block',
                 filter: 'brightness(0.9)',
               }}
