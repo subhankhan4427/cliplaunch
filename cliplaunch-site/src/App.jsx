@@ -663,11 +663,11 @@ function ContentStyleCard({ item }) {
           aspectRatio: isPair ? '18 / 16' : '9 / 16',
           maxHeight: isPair ? '320px' : '360px',
           overflow: 'hidden',
-          display: isPair ? 'flex' : 'block',
+          display: isPair ? 'flex' : 'flex',
           alignItems: 'stretch',
           justifyContent: 'center',
-          gap: isPair ? '12px' : undefined,
-          padding: isPair ? '12px' : 0,
+          gap: isPair ? '12px' : 0,
+          padding: '12px',
           background: '#111',
         }}
       >
@@ -677,11 +677,11 @@ function ContentStyleCard({ item }) {
             whileHover={{ scale: 1.03 }}
             transition={{ duration: 0.4 }}
             style={{
-              flex: isPair ? 1 : undefined,
-              width: isPair ? undefined : '100%',
+              flex: isPair ? 1 : 1,
+              width: '100%',
               height: '100%',
-              aspectRatio: isPair ? '9 / 16' : undefined,
-              borderRadius: isPair ? '14px' : 0,
+              aspectRatio: isPair ? '9 / 16' : '9 / 16',
+              borderRadius: '14px',
               overflow: 'hidden',
               background: '#0b0b0b',
             }}
