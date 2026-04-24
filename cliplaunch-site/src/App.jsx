@@ -531,14 +531,14 @@ function ClipCard({ img, views, label, height = '260px' }) {
         border: `1px solid ${C.border}`,
         cursor: 'pointer',
         boxShadow: '0 20px 40px rgba(0,0,0,0.45)',
-        background: '#111',
+        background: '#0b0b0b',
       }}
     >
       <img
         src={img}
         alt=""
         referrerPolicy="no-referrer"
-        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
+        style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
       />
       <div
         style={{
@@ -548,26 +548,6 @@ function ClipCard({ img, views, label, height = '260px' }) {
           pointerEvents: 'none',
         }}
       />
-      {label ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: '12px',
-            left: '12px',
-            background: C.red,
-            color: C.white,
-            fontSize: '10px',
-            fontWeight: 700,
-            fontFamily: "'DM Sans', sans-serif",
-            padding: '4px 8px',
-            borderRadius: '6px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}
-        >
-          {label}
-        </div>
-      ) : null}
       <div
         style={{
           position: 'absolute',
@@ -807,6 +787,7 @@ function FaqItem({ question, answer, isOpen, onToggle, isLast }) {
 function FloatingNav({
   isMobile,
   scrolled,
+  navHidden,
   activeSection,
   menuOpen,
   setMenuOpen,
@@ -818,7 +799,7 @@ function FloatingNav({
     <>
       <motion.div
         initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+        animate={{ y: navHidden ? -120 : 0, opacity: navHidden ? 0 : 1 }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: 'fixed',
@@ -1043,6 +1024,7 @@ function TermsOfService({ goHome, navigateToSection, isMobile, scrolled, activeS
       <FloatingNav
         isMobile={isMobile}
         scrolled={scrolled}
+        navHidden={navHidden}
         activeSection={activeSection}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
@@ -1210,6 +1192,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [openFaq, setOpenFaq] = useState(0)
   const [scrolled, setScrolled] = useState(false)
+  const [navHidden, setNavHidden] = useState(false)
   const [activeSection, setActiveSection] = useState('how-it-works')
   const [pendingSection, setPendingSection] = useState(null)
   const [clipsPaused, setClipsPaused] = useState(false)
@@ -1241,8 +1224,35 @@ function App() {
   }, [menuOpen])
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 28)
-    handleScroll()
+    let lastY = window.scrollY
+    let ticking = false
+
+    const update = () => {
+      const y = window.scrollY
+      setScrolled(y > 28)
+
+      if (y < 60) {
+        setNavHidden(false)
+      } else {
+        const delta = y - lastY
+        if (Math.abs(delta) > 8) {
+          if (delta > 0) setNavHidden(true)
+          if (delta < 0) setNavHidden(false)
+          lastY = y
+        }
+      }
+
+      ticking = false
+    }
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(update)
+        ticking = true
+      }
+    }
+
+    update()
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -1370,6 +1380,7 @@ function App() {
       <FloatingNav
         isMobile={isMobile}
         scrolled={scrolled}
+        navHidden={navHidden}
         activeSection={activeSection}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
@@ -1826,9 +1837,9 @@ function App() {
                 top: 0,
                 left: 0,
                 bottom: 0,
-                width: '420px',
+                width: '560px',
                 background:
-                  'linear-gradient(to right, #080808 0%, #080808 28%, rgba(8,8,8,0.82) 62%, rgba(8,8,8,0.55) 78%, transparent 100%)',
+                  'linear-gradient(to right, #080808 0%, #080808 36%, rgba(8,8,8,0.9) 66%, rgba(8,8,8,0.65) 82%, transparent 100%)',
                 zIndex: 10,
                 pointerEvents: 'none',
               }}
@@ -1839,9 +1850,9 @@ function App() {
                 top: 0,
                 right: 0,
                 bottom: 0,
-                width: '420px',
+                width: '560px',
                 background:
-                  'linear-gradient(to left, #080808 0%, #080808 28%, rgba(8,8,8,0.82) 62%, rgba(8,8,8,0.55) 78%, transparent 100%)',
+                  'linear-gradient(to left, #080808 0%, #080808 36%, rgba(8,8,8,0.9) 66%, rgba(8,8,8,0.65) 82%, transparent 100%)',
                 zIndex: 10,
                 pointerEvents: 'none',
               }}
