@@ -660,33 +660,46 @@ function ContentStyleCard({ item }) {
       <div
         style={{
           width: '100%',
-          aspectRatio: '9 / 16',
-          maxHeight: '360px',
+          aspectRatio: isPair ? '18 / 16' : '9 / 16',
+          maxHeight: isPair ? '320px' : '360px',
           overflow: 'hidden',
-          display: isPair ? 'grid' : 'block',
-          gridTemplateColumns: isPair ? '1fr 1fr' : undefined,
-          gap: isPair ? '8px' : undefined,
-          padding: isPair ? '0 8px 0 0' : 0,
+          display: isPair ? 'flex' : 'block',
+          alignItems: 'stretch',
+          justifyContent: 'center',
+          gap: isPair ? '12px' : undefined,
+          padding: isPair ? '12px' : 0,
           background: '#111',
         }}
       >
         {item.images.map((image) => (
-          <motion.img
+          <motion.div
             key={image}
-            src={image}
-            alt=""
-            referrerPolicy="no-referrer"
             whileHover={{ scale: 1.03 }}
             transition={{ duration: 0.4 }}
             style={{
-              width: '100%',
+              flex: isPair ? 1 : undefined,
+              width: isPair ? undefined : '100%',
               height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center top',
-              display: 'block',
-              filter: 'brightness(0.9)',
+              aspectRatio: isPair ? '9 / 16' : undefined,
+              borderRadius: isPair ? '14px' : 0,
+              overflow: 'hidden',
+              background: '#0b0b0b',
             }}
-          />
+          >
+            <img
+              src={image}
+              alt=""
+              referrerPolicy="no-referrer"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center top',
+                display: 'block',
+                filter: 'brightness(0.9)',
+              }}
+            />
+          </motion.div>
         ))}
       </div>
       <div style={{ padding: '20px 24px 0' }}>
