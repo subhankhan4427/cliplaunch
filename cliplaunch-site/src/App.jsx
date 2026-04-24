@@ -660,7 +660,8 @@ function ContentStyleCard({ item }) {
       <div
         style={{
           width: '100%',
-          height: '220px',
+          aspectRatio: '9 / 16',
+          maxHeight: '360px',
           overflow: 'hidden',
           display: isPair ? 'grid' : 'block',
           gridTemplateColumns: isPair ? '1fr 1fr' : undefined,
