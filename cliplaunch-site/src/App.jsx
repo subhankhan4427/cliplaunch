@@ -496,16 +496,11 @@ function ClientMarqueeRow({ items, direction = 'left', duration = 28 }) {
             <div
               style={{
                 position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(180deg, transparent 35%, rgba(0,0,0,0.88) 100%)',
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                left: '12px',
-                right: '12px',
-                bottom: '12px',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                padding: '10px 12px',
+                background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.86) 100%)',
                 color: C.white,
                 fontSize: '12px',
                 fontWeight: 700,
@@ -875,7 +870,7 @@ function FloatingNav({
               textShadow: scrolled ? '0 0 20px rgba(232,0,28,0.5)' : 'none',
             }}
           >
-            <span>{'\u{1F680}'}</span>
+            <span></span>
             <span>CLIPLAUNCH</span>
           </motion.button>
 
@@ -1831,9 +1826,9 @@ function App() {
                 top: 0,
                 left: 0,
                 bottom: 0,
-                width: '300px',
+                width: '420px',
                 background:
-                  'linear-gradient(to right, #080808 0%, #080808 20%, rgba(8,8,8,0.7) 60%, transparent 100%)',
+                  'linear-gradient(to right, #080808 0%, #080808 28%, rgba(8,8,8,0.82) 62%, rgba(8,8,8,0.55) 78%, transparent 100%)',
                 zIndex: 10,
                 pointerEvents: 'none',
               }}
@@ -1844,9 +1839,9 @@ function App() {
                 top: 0,
                 right: 0,
                 bottom: 0,
-                width: '300px',
+                width: '420px',
                 background:
-                  'linear-gradient(to left, #080808 0%, #080808 20%, rgba(8,8,8,0.7) 60%, transparent 100%)',
+                  'linear-gradient(to left, #080808 0%, #080808 28%, rgba(8,8,8,0.82) 62%, rgba(8,8,8,0.55) 78%, transparent 100%)',
                 zIndex: 10,
                 pointerEvents: 'none',
               }}
@@ -2553,7 +2548,7 @@ function App() {
                 cursor: 'pointer',
               }}
             >
-              {'\u{1F680}'} CLIPLAUNCH
+               CLIPLAUNCH
             </button>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '16px' }}>
